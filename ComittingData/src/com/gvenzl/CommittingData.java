@@ -16,7 +16,9 @@ import oracle.jdbc.pool.OracleDataSource;
 public class CommittingData {
 
 	private static String TESTTABLE = "COMMITDATA";
-    private static String host = "";
+    private static int ITERATIONS = 100000;
+	
+	private static String host = "";
 	private static int port = 0;
 	private static String serviceName = "";
 	private static String userName = "";
@@ -38,6 +40,7 @@ public class CommittingData {
 		ods.setPassword(password);
 
 		myConnection = ods.getConnection();
+		myConnection.setAutoCommit(false);
 	}
 	/**
 	 * Main entry point.
@@ -114,14 +117,67 @@ public class CommittingData {
 	private void runTests() throws SQLException {
 		
 		if (commitEveryRow) {
-			
+			commitEveryRow();
 		}
 		else if (commitAtEnd) {
-			
+			commitAtEnd();
 		}
 		else if (batchCommit > 0) {
-			
+			batchCommit(batchCommit);
 		}
+	}
+
+	/**
+	 * This method loads static data into the test table.
+	 * It iterates over a loop as many times as is specified in the static ITERATIONS variable.
+	 * The method commits after every newly inserted row.
+	 * @throws SQLException Any Database error that might occur during the insert
+	 */
+	private void commitEveryRow() throws SQLException {
+		
+		System.out.println("Loading data with committing after every row - " + ITERATIONS + " iterations");
+		
+		PreparedStatement stmt = myConnection.prepareStatement("INSERT INTO " + TESTTABLE + " VALUES (?,?)");
+		
+		long startTime = System.currentTimeMillis();
+		for(int i=0;i<ITERATIONS;i++) {
+			stmt.setInt(1, i);
+			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
+			stmt.execute();
+			myConnection.commit();
+		}
+		long endTime = System.currentTimeMillis();
+		
+		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+	}
+	
+	/**
+	 * This method loads static data into the test table
+	 * It iterates over a loop as many times as is specified in the static ITERATIONS variable.
+	 * The method commits only once after all the data is fully loaded.
+	 * @throws SQLException
+	 */
+	private void commitAtEnd() throws SQLException {
+		
+		System.out.println("Loading data with committing after the entire set is loaded - " + ITERATIONS + " iterations");
+		
+		PreparedStatement stmt = myConnection.prepareStatement("INSERT INTO " + TESTTABLE + " VALUES (?,?)");
+		
+		long startTime = System.currentTimeMillis();
+		for(int i=0;i<ITERATIONS;i++) {
+			stmt.setInt(1, i);
+			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
+			stmt.execute();
+		}
+		myConnection.commit();
+		long endTime = System.currentTimeMillis();
+		
+		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+		
+	}
+	
+	private void batchCommit(int batchSize) throws SQLException {
+		
 	}
 
 	/**
