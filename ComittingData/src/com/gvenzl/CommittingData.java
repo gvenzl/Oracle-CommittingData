@@ -47,7 +47,7 @@ public class CommittingData {
 	 * @param args Array with various options on how to execute
 	 * and which database to connect to
 	 */
-	public static void main(String[] args) throws Exception {
+	public static void main(final String[] args) throws Exception {
 
 		if (args.length == 0) {
 			printHelp();
@@ -94,12 +94,14 @@ public class CommittingData {
 	}
 
 	/**
-	 * This method prepares the Database for testing by creating the test table
+	 * This method prepares the Database for testing by creating the test table.
 	 * @throws SQLException Any Database related error
 	 */
 	private void setup() throws SQLException {
 
-		PreparedStatement stmt = myConnection.prepareStatement("CREATE TABLE " + TESTTABLE + " (ID NUMBER, TXT VARCHAR2(255))");
+		PreparedStatement stmt = myConnection.prepareStatement(
+				"CREATE TABLE " + TESTTABLE
+					+ " (ID NUMBER, TXT VARCHAR2(255))");
 		stmt.execute();
 	}
 	
@@ -152,16 +154,17 @@ public class CommittingData {
 	}
 	
 	/**
-	 * This method loads static data into the test table
+	 * This method loads static data into the test table.
 	 * It iterates over a loop as many times as is specified in the static ITERATIONS variable.
 	 * The method commits only once after all the data is fully loaded.
-	 * @throws SQLException
+	 * @throws SQLException Any database error that may occurs during the insert
 	 */
 	private void commitAtEnd() throws SQLException {
 		
 		System.out.println("Loading data with committing after the entire set is loaded - " + ITERATIONS + " iterations");
 		
-		PreparedStatement stmt = myConnection.prepareStatement("INSERT INTO " + TESTTABLE + " VALUES (?,?)");
+		PreparedStatement stmt = myConnection.prepareStatement(
+				"INSERT INTO " + TESTTABLE + " VALUES (?,?)");
 		
 		long startTime = System.currentTimeMillis();
 		for(int i=0;i<ITERATIONS;i++) {
@@ -176,8 +179,37 @@ public class CommittingData {
 		
 	}
 	
-	private void batchCommit(int batchSize) throws SQLException {
+	/**
+	 * This method loads static data into the test table.
+	 * It used the JDBC batching functionality and iterates over a loop
+	 * as many times as is specified in the static ITERATIONS variable.
+	 * @param batchSize The size of the batch before executing it.
+	 * @throws SQLException Any database error that may occurs during the insert
+	 */
+	private void batchCommit(final int batchSize) throws SQLException {
 		
+		System.out.println("Batch loading data with committing "
+				+ "after the entire set is loaded - " + ITERATIONS + " iterations");
+		
+		PreparedStatement stmt = myConnection.prepareStatement(
+				"INSERT INTO " + TESTTABLE + " VALUES (?,?)");
+		
+		long startTime = System.currentTimeMillis();
+		for(int i=0;i<ITERATIONS;i++) {
+			stmt.setInt(1, i);
+			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
+			stmt.addBatch();
+			// Execute batch if batch size is reached
+			if ((i % batchSize) == 0) {
+				stmt.executeBatch();
+			}
+		}
+		stmt.executeBatch();
+		myConnection.commit();
+		long endTime = System.currentTimeMillis();
+		
+		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+
 	}
 
 	/**
@@ -186,7 +218,7 @@ public class CommittingData {
 	private static void printHelp() {
 		System.out.println("Committing data to the Oracle Database - Usage:");
 		System.out.println();
-		System.out.println("java com.gvenzl.CommittingData -host [host] -port [port] -srvn [service name] -user [username] -pass [password] -commitEveryRow -commitAtEnd -batchCommit [commit size] -directPath");
+		System.out.println("java com.gvenzl.CommittingData -host [host] -port [port] -srvn [service name] -user [username] -pass [password] -commitEveryRow -commitAtEnd -batchCommit [batch size] -directPath");
 		System.out.println();
 		System.out.println("host: 		The database host name");
 		System.out.println("port: 		The database listener port");
@@ -195,7 +227,7 @@ public class CommittingData {
 		System.out.println("password: 	The database user password");
 		System.out.println("commitEveryRow: Commit data after every row");
 		System.out.println("commitAtEnd: 	Commit data only once at the end of a load");
-		System.out.println("commit size: 	N/A");
+		System.out.println("batch size: 	The size of the loading batch to execute at once");
 		System.out.println("directPath: 	N/A");
 
 		System.exit(0);
