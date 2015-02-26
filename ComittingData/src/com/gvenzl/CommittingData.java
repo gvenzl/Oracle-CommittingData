@@ -14,23 +14,70 @@ import oracle.jdbc.pool.OracleDataSource;
  */
 public class CommittingData {
 
+	/**
+	 * Name of the test table.
+	 */
 	private static String TESTTABLE = "COMMITDATA";
-    private static int ITERATIONS = 100000;
+    /**
+     * Fixed amount of iterations.
+     */
+	private static int ITERATIONS = 100000;
+	/**
+	 * Error logging table for error logging.
+	 */
     private static String ERROR_LOG_TABLE = "ERR_LOG_TABLE";
+    /**
+     * Append hint for direct path inserts.
+     */
     private static String APPEND = "";
 	
-	private static String host = "";
-	private static int port = 0;
-	private static String serviceName = "";
-	private static String userName = "";
-	private static String password = "";
-	private static boolean commitEveryRow = false;
-	private static boolean commitAtEnd = false;
-	private static int batchCommit = 0;
+    /**
+     * Input parameter.
+     */
+    private static String host = "";
+    /**
+     * Input parameter.
+     */
+    private static int port = 0;
+    /**
+     * Input parameter.
+     */	
+    private static String serviceName = "";
+    /**
+     * Input parameter.
+     */
+    private static String userName = "";
+    /**
+     * Input parameter.
+     */
+    private static String password = "";
+    /**
+     * Input parameter.
+     */
+    private static boolean commitEveryRow = false;
+    /**
+     * Input parameter.
+     */
+    private static boolean commitAtEnd = false;
+    /**
+     * Input parameter.
+     */
+    private static int batchCommit = 0;
+    /**
+     * Input parameter.
+     */
 	private static boolean saveExceptions = false;
 
+	/**
+	 * Database connection.
+	 */
 	private Connection myConnection;
 	
+	/**
+	 * Constructs a CommittingData object.
+	 * @throws SQLException Any database error while
+	 * opening a database connection
+	 */
 	public CommittingData() throws SQLException {
 		OracleDataSource ods = new OracleDataSource();
 		ods.setDriverType("thin");
@@ -47,15 +94,15 @@ public class CommittingData {
 	 * Main entry point.
 	 * @param args Array with various options on how to execute
 	 * and which database to connect to
+	 * @throws Exception Any error that happens during execution
 	 */
 	public static void main(final String[] args) throws Exception {
 
 		if (args.length == 0) {
 			printHelp();
-		}
-		else {
+		} else {
 
-			for (int i=0;i<args.length;i++) {
+			for (int i = 0; i < args.length; i++) {
 				switch (args[i]) {
 					case "-host":
 						host = args[++i];
@@ -103,58 +150,80 @@ public class CommittingData {
 	 * @throws SQLException Any Database related error
 	 */
 	private void setup() throws SQLException {
-
-		myConnection.prepareStatement(
-				"CREATE TABLE " + TESTTABLE
-					+ " (ID NUMBER, TXT VARCHAR2(255))").execute();
-		if (saveExceptions) {
+		final int ALREADYEXISTS = 955;
+		try {
 			myConnection.prepareStatement(
-					"BEGIN DBMS_ERRLOG.CREATE_ERROR_LOG('" + TESTTABLE + "', '" + ERROR_LOG_TABLE + "'); END;").execute();
+					"CREATE TABLE " + TESTTABLE
+						+ " (ID NUMBER, TXT VARCHAR2(255))").execute();
+		} catch (SQLException e) {
+			// Ignore "ORA-00955: name is already used by an existing object"
+			if (e.getErrorCode() != ALREADYEXISTS) {
+				throw e;
+			}
+		}
+		if (saveExceptions) {
+			try {
+				myConnection.prepareStatement(
+						"BEGIN DBMS_ERRLOG.CREATE_ERROR_LOG('" + TESTTABLE
+						+ "', '" + ERROR_LOG_TABLE + "'); END;").execute();
+			} catch (SQLException e) {
+				if (e.getErrorCode() != ALREADYEXISTS) {
+					throw e;
+				}
+			}
 		}
 	}
 	
+	/**
+	 * Tears down the setup environment.
+	 * @throws SQLException Any database error while tear down.
+	 */
 	private void tearDown() throws SQLException {
 		myConnection.prepareStatement("DROP TABLE " + TESTTABLE).execute();
 		if (saveExceptions) {
-			myConnection.prepareStatement("DROP TABLE " + ERROR_LOG_TABLE).execute();
+			myConnection.
+				prepareStatement("DROP TABLE " + ERROR_LOG_TABLE).
+					execute();
 		}
 		myConnection.prepareStatement("PURGE USER_RECYCLEBIN").execute();
 	}
 	
 	/**
-	 * Run the tests
+	 * Run the tests.
 	 * @throws SQLException Any Database error
 	 */
 	private void runTests() throws SQLException {
 		
 		if (commitEveryRow) {
 			commitEveryRow();
-		}
-		else if (commitAtEnd) {
+		} else if (commitAtEnd) {
 			commitAtEnd();
-		}
-		else if (batchCommit > 0 && saveExceptions) {
+		} else if (batchCommit > 0 && saveExceptions) {
 			batchCommitSaveExceptions(batchCommit);
-		}
-		else if (batchCommit > 0) {
+		} else if (batchCommit > 0) {
 			batchCommit(batchCommit);
 		}
 	}
 
 	/**
 	 * This method loads static data into the test table.
-	 * It iterates over a loop as many times as is specified in the static ITERATIONS variable.
+	 * It iterates over a loop as many times as is specified
+	 * in the static ITERATIONS variable.
 	 * The method commits after every newly inserted row.
-	 * @throws SQLException Any Database error that might occur during the insert
+	 * @throws SQLException Any Database error that might
+	 * occur during the insert
 	 */
 	private void commitEveryRow() throws SQLException {
 		
-		System.out.println("Loading data with committing after every row - " + ITERATIONS + " iterations");
+		System.out.println("Loading data with committing"
+				+ " after every row - " + ITERATIONS + " iterations");
 		
-		PreparedStatement stmt = myConnection.prepareStatement("INSERT " + APPEND + " INTO " + TESTTABLE + " VALUES (?,?)");
+		PreparedStatement stmt = myConnection.
+				prepareStatement("INSERT " + APPEND + " INTO "
+						+ TESTTABLE + " VALUES (?,?)");
 		
 		long startTime = System.currentTimeMillis();
-		for(int i=0;i<ITERATIONS;i++) {
+		for (int i = 0; i < ITERATIONS; i++) {
 			stmt.setInt(1, i);
 			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
 			stmt.execute();
@@ -162,24 +231,26 @@ public class CommittingData {
 		}
 		long endTime = System.currentTimeMillis();
 		
-		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+		System.out.println("Data loaded in: " + (endTime - startTime) + "ms");
 	}
 	
 	/**
 	 * This method loads static data into the test table.
-	 * It iterates over a loop as many times as is specified in the static ITERATIONS variable.
+	 * It iterates over a loop as many times as is specified
+	 * in the static ITERATIONS variable.
 	 * The method commits only once after all the data is fully loaded.
 	 * @throws SQLException Any database error that may occurs during the insert
 	 */
 	private void commitAtEnd() throws SQLException {
 		
-		System.out.println("Loading data with committing after the entire set is loaded - " + ITERATIONS + " iterations");
+		System.out.println("Loading data with committing after"
+				+ " the entire set is loaded - " + ITERATIONS + " iterations");
 		
 		PreparedStatement stmt = myConnection.prepareStatement(
 				"INSERT " + APPEND + " INTO " + TESTTABLE + " VALUES (?,?)");
 		
 		long startTime = System.currentTimeMillis();
-		for(int i=0;i<ITERATIONS;i++) {
+		for (int i = 0; i < ITERATIONS; i++) {
 			stmt.setInt(1, i);
 			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
 			stmt.execute();
@@ -187,7 +258,7 @@ public class CommittingData {
 		myConnection.commit();
 		long endTime = System.currentTimeMillis();
 		
-		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+		System.out.println("Data loaded in: " + (endTime - startTime) + "ms");
 		
 	}
 	
@@ -201,26 +272,35 @@ public class CommittingData {
 	private void batchCommit(final int batchSize) throws SQLException {
 		
 		System.out.println("Batch loading data with committing "
-				+ "after the entire set is loaded - " + ITERATIONS + " iterations");
+				+ "after the entire set is loaded - "
+				+ ITERATIONS + " iterations");
 		
 		PreparedStatement stmt = myConnection.prepareStatement(
 				"INSERT " + APPEND + " INTO " + TESTTABLE + " VALUES (?,?)");
 		
 		long startTime = System.currentTimeMillis();
-		for(int i=0;i<ITERATIONS;i++) {
+		for (int i = 0; i < ITERATIONS; i++) {
 			stmt.setInt(1, i);
 			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
 			stmt.addBatch();
 			// Execute batch if batch size is reached
 			if ((i % batchSize) == 0) {
-				stmt.executeBatch();
+				try {
+					stmt.executeBatch();
+				} catch (SQLException e) {
+					e.printStackTrace(System.err);
+				}
 			}
 		}
-		stmt.executeBatch();
+		try {
+			stmt.executeBatch();
+		} catch (SQLException e) {
+			e.printStackTrace(System.err);
+		}
 		myConnection.commit();
 		long endTime = System.currentTimeMillis();
 		
-		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+		System.out.println("Data loaded in: " + (endTime - startTime) + "ms");
 
 	}
 
@@ -233,16 +313,20 @@ public class CommittingData {
 	 * @param batchSize The size of the batch before executing it.
 	 * @throws SQLException Any database error that may occurs during the insert
 	 */
-	private void batchCommitSaveExceptions(final int batchSize) throws SQLException {
+	private void batchCommitSaveExceptions(final int batchSize)
+			throws SQLException {
 		
-		System.out.println("Batch loading data (save exceptions) with committing "
-				+ "after the entire set is loaded - " + ITERATIONS + " iterations");
+		System.out.println("Batch loading data (save exceptions)"
+				+ " with committing after the entire set is loaded - "
+				+ ITERATIONS + " iterations");
 		
 		PreparedStatement stmt = myConnection.prepareStatement(
-				"INSERT " + APPEND + " INTO " + TESTTABLE + " VALUES (?,?) LOG ERRORS INTO " + ERROR_LOG_TABLE + " REJECT LIMIT UNLIMITED");
+				"INSERT " + APPEND + " INTO " + TESTTABLE 
+				+ " VALUES (?,?) LOG ERRORS INTO " + ERROR_LOG_TABLE
+				+ " REJECT LIMIT UNLIMITED");
 		
 		long startTime = System.currentTimeMillis();
-		for(int i=0;i<ITERATIONS;i++) {
+		for (int i = 0; i < ITERATIONS; i++) {
 			stmt.setInt(1, i);
 			stmt.setString(2, ";ajskfj[wig[ajdfkjaw[oeimakldjalksva;djfashdfjksahdf;lkjasdfoiwejaflkf;smvwlknvoaweijfasdfjasldf;kwlvma;dfjlaksjfowemowaivnoawn");
 			stmt.addBatch();
@@ -255,7 +339,7 @@ public class CommittingData {
 		myConnection.commit();
 		long endTime = System.currentTimeMillis();
 		
-		System.out.println("Data loaded in: " + (endTime-startTime) + "ms");
+		System.out.println("Data loaded in: " + (endTime - startTime) + "ms");
 
 	}
 	/**
@@ -264,7 +348,10 @@ public class CommittingData {
 	private static void printHelp() {
 		System.out.println("Committing data to the Oracle Database - Usage:");
 		System.out.println();
-		System.out.println("java com.gvenzl.CommittingData -host [host] -port [port] -srvn [service name] -user [username] -pass [password] -commitEveryRow -commitAtEnd -batchCommit [batch size] -saveExceptions -directPath");
+		System.out.println("java com.gvenzl.CommittingData -host [host]"
+				+ " -port [port] -srvn [service name] -user [username]"
+				+ " -pass [password] -commitEveryRow -commitAtEnd"
+				+ " -batchCommit [batch size] -saveExceptions -directPath");
 		System.out.println();
 		System.out.println("host: 		The database host name");
 		System.out.println("port: 		The database listener port");
@@ -272,10 +359,14 @@ public class CommittingData {
 		System.out.println("username: 	The database username");
 		System.out.println("password: 	The database user password");
 		System.out.println("commitEveryRow: Commit data after every row");
-		System.out.println("commitAtEnd: 	Commit data only once at the end of a load");
-		System.out.println("batch size: 	The size of the loading batch to execute at once");
-		System.out.println("saveExceptions: Specify whether you would like to save exceptions during batch loading");
-		System.out.println("directPath: 	Specify whether you would like to use DIRECT PATH loading");
+		System.out.println("commitAtEnd: 	Commit data only once at"
+				+ " the end of a load");
+		System.out.println("batch size: 	The size of the loading batch"
+				+ " to execute at once");
+		System.out.println("saveExceptions: Specify whether you would like"
+				+ " to save exceptions during batch loading");
+		System.out.println("directPath: 	Specify whether you would like"
+				+ " to use DIRECT PATH loading");
 
 		System.exit(0);
 	}
