@@ -228,7 +228,7 @@ public class CommittingData {
 	 * This method loads static data into the test table.
 	 * It used the JDBC batching functionality and iterates over a loop
 	 * as many times as is specified in the static ITERATIONS variable.
-	 * It also uses the SAVE EXCEPTIONS clause that will prevent the
+	 * It also uses the LOG ERRORS clause that will prevent the
 	 * execution from failing if any exception occurs within the batch.
 	 * @param batchSize The size of the batch before executing it.
 	 * @throws SQLException Any database error that may occurs during the insert
